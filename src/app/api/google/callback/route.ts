@@ -20,43 +20,57 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/connexion`)
     }
 
-    // Exchange code for tokens
     const tokens = await getGoogleTokens(code)
 
     if (!tokens.access_token) {
       return NextResponse.redirect(`${origin}/etablissements?error=no_token`)
     }
 
-    // Fetch accounts and locations
+    // Fetch all available Google Business locations
+    const locations: Array<{
+      account_name: string
+      location_name: string
+      title: string
+      address: string | null
+    }> = []
+
     const accounts = await fetchAccounts(tokens.access_token)
-
     for (const account of accounts) {
-      const locations = await fetchLocations(tokens.access_token, account.name)
-
-      for (const location of locations) {
-        // Create a business entry for each location
-        await supabase.from('businesses').upsert(
-          {
-            user_id: user.id,
-            google_account_id: account.name,
-            google_location_name: location.name,
-            business_name: location.title || 'Mon commerce',
-            address: location.storefrontAddress?.addressLines?.join(', ') || null,
-            google_access_token: tokens.access_token,
-            google_refresh_token: tokens.refresh_token || null,
-            google_token_expires_at: tokens.expiry_date
-              ? new Date(tokens.expiry_date).toISOString()
-              : null,
-          },
-          {
-            onConflict: 'google_location_name',
-            ignoreDuplicates: false,
-          }
-        )
+      const locs = await fetchLocations(tokens.access_token, account.name)
+      for (const loc of locs) {
+        locations.push({
+          account_name: account.name,
+          location_name: loc.name,
+          title: loc.title || 'Mon commerce',
+          address: loc.storefrontAddress?.addressLines?.join(', ') || null,
+        })
       }
     }
 
-    return NextResponse.redirect(`${origin}/etablissements?success=true`)
+    if (locations.length === 0) {
+      return NextResponse.redirect(`${origin}/etablissements?error=no_locations`)
+    }
+
+    // Store tokens + locations temporarily, redirect to picker
+    const { data: pending } = await supabase
+      .from('pending_google_connections')
+      .insert({
+        user_id: user.id,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || null,
+        token_expires_at: tokens.expiry_date
+          ? new Date(tokens.expiry_date).toISOString()
+          : null,
+        locations,
+      })
+      .select('id')
+      .single()
+
+    if (!pending) {
+      return NextResponse.redirect(`${origin}/etablissements?error=session_failed`)
+    }
+
+    return NextResponse.redirect(`${origin}/tableau-de-bord?session=${pending.id}`)
   } catch (error) {
     console.error('Google OAuth callback error:', error)
     return NextResponse.redirect(`${origin}/etablissements?error=oauth_failed`)

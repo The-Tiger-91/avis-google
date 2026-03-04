@@ -19,7 +19,7 @@ export function StatsCards({
       label: 'Nouveaux avis',
       value: newReviews,
       icon: MessageSquare,
-      color: 'text-blue-600 bg-blue-50',
+      color: 'text-indigo-600 bg-indigo-50',
     },
     {
       label: 'Réponses envoyées',

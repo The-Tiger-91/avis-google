@@ -2,10 +2,8 @@
 
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { RatingStars } from './rating-stars'
-import { Check, X, RefreshCw, Edit3 } from 'lucide-react'
+import { Check, X, RefreshCw, Edit3, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -17,6 +15,7 @@ interface ReviewCardProps {
     comment: string | null
     review_created_at: string | null
     status: string
+    photo_urls?: string[]
   }
   response?: {
     id: string
@@ -24,14 +23,31 @@ interface ReviewCardProps {
     final_text: string | null
     status: string
   } | null
+  businessName?: string
   onApprove: (reviewId: string, responseId: string, text: string) => Promise<void>
   onReject: (reviewId: string, responseId: string) => Promise<void>
   onRegenerate: (reviewId: string) => Promise<void>
 }
 
+const AVATAR_COLORS = [
+  'bg-red-500', 'bg-purple-500', 'bg-green-500', 'bg-blue-500',
+  'bg-orange-500', 'bg-pink-500', 'bg-teal-500', 'bg-indigo-500',
+]
+
+function getAvatarColor(name: string) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+}
+
 export function ReviewCard({
   review,
   response,
+  businessName = 'Votre établissement',
   onApprove,
   onReject,
   onRegenerate,
@@ -42,26 +58,22 @@ export function ReviewCard({
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
 
-  const statusBadge = {
-    new: { label: 'Nouveau', variant: 'info' as const },
-    response_pending: { label: 'En attente', variant: 'warning' as const },
-    responded: { label: 'Répondu', variant: 'success' as const },
-    ignored: { label: 'Ignoré', variant: 'default' as const },
-  }
+  const isPending = review.status === 'response_pending'
+  const isResponded = review.status === 'responded'
+  const isIgnored = review.status === 'ignored'
 
-  const badge = statusBadge[review.status as keyof typeof statusBadge] || statusBadge.new
+  const reviewerName = review.reviewer_name || 'Anonyme'
+  const avatarColor = getAvatarColor(reviewerName)
+  const initials = getInitials(reviewerName)
+  const bizInitials = getInitials(businessName)
 
   async function handleAction(action: string) {
     if (!response) return
     setLoading(action)
     try {
-      if (action === 'approve') {
-        await onApprove(review.id, response.id, editedText)
-      } else if (action === 'reject') {
-        await onReject(review.id, response.id)
-      } else if (action === 'regenerate') {
-        await onRegenerate(review.id)
-      }
+      if (action === 'approve') await onApprove(review.id, response.id, editedText)
+      else if (action === 'reject') await onReject(review.id, response.id)
+      else if (action === 'regenerate') await onRegenerate(review.id)
     } finally {
       setLoading(null)
       setIsEditing(false)
@@ -69,99 +81,133 @@ export function ReviewCard({
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <RatingStars rating={review.rating} />
-              <span className="font-medium text-gray-900">
-                {review.reviewer_name || 'Anonyme'}
-              </span>
+    <Card className={isPending ? 'ring-2 ring-blue-100' : ''}>
+      <CardContent className="p-5">
+        <div className="flex items-start gap-3">
+          {/* Avatar */}
+          <div className={`w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+            {initials}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {/* Name + date + status */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm text-gray-900">{reviewerName}</span>
+                {review.review_created_at && (
+                  <span className="text-xs text-gray-400">
+                    {formatDistanceToNow(new Date(review.review_created_at), { addSuffix: true, locale: fr })}
+                  </span>
+                )}
+              </div>
+              {isIgnored && (
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Ignoré</span>
+              )}
             </div>
-            {review.review_created_at && (
-              <p className="text-xs text-gray-400">
-                {formatDistanceToNow(new Date(review.review_created_at), {
-                  addSuffix: true,
-                  locale: fr,
-                })}
-              </p>
+
+            {/* Stars */}
+            <div className="my-1">
+              <RatingStars rating={review.rating} size="sm" />
+            </div>
+
+            {/* Comment */}
+            {review.comment && (
+              <p className="text-gray-700 text-sm leading-relaxed">{review.comment}</p>
+            )}
+
+            {/* Photos */}
+            {review.photo_urls && review.photo_urls.length > 0 && (
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {review.photo_urls.slice(0, 4).map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`Photo ${i + 1}`}
+                    className="h-20 w-20 object-cover rounded-lg border border-gray-100"
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Response — pending */}
+            {response && isPending && (
+              <div className="mt-4 ml-2 pl-4 border-l-2 border-blue-300 bg-blue-50/50 rounded-r-lg py-3 pr-3">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                    {bizInitials}
+                  </div>
+                  <span className="text-xs font-semibold text-gray-900">{businessName}</span>
+                  <span className="text-[10px] text-gray-400">Propriétaire</span>
+                  <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-orange-600 font-medium bg-orange-50 px-2 py-0.5 rounded-full">
+                    <Clock className="h-2.5 w-2.5" />
+                    En attente de validation
+                  </span>
+                </div>
+
+                {isEditing ? (
+                  <textarea
+                    value={editedText}
+                    onChange={(e) => setEditedText(e.target.value)}
+                    rows={4}
+                    className="w-full p-2.5 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none resize-none bg-white mb-3"
+                  />
+                ) : (
+                  <p className="text-sm text-gray-600 mb-3">{editedText}</p>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => handleAction('approve')}
+                    disabled={loading === 'approve'}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    <Check className="h-3 w-3" />
+                    {loading === 'approve' ? 'Publication...' : 'Publier la réponse'}
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-md text-xs font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                    {isEditing ? 'Aperçu' : 'Modifier'}
+                  </button>
+                  <button
+                    onClick={() => handleAction('regenerate')}
+                    disabled={loading === 'regenerate'}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-500 rounded-md text-xs font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    {loading === 'regenerate' ? '...' : 'Regénérer'}
+                  </button>
+                  <button
+                    onClick={() => handleAction('reject')}
+                    disabled={loading === 'reject'}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-gray-400 rounded-md text-xs font-medium hover:text-red-500 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                    Ignorer
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Response — responded */}
+            {response && isResponded && (
+              <div className="mt-4 ml-2 pl-4 border-l-2 border-gray-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                    {bizInitials}
+                  </div>
+                  <span className="text-xs font-semibold text-gray-900">{businessName}</span>
+                  <span className="text-[10px] text-gray-400">Propriétaire</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {response.final_text || response.ai_generated_text}
+                </p>
+              </div>
             )}
           </div>
-          <Badge variant={badge.variant}>{badge.label}</Badge>
         </div>
-
-        {review.comment && (
-          <p className="text-gray-700 text-sm leading-relaxed">
-            &ldquo;{review.comment}&rdquo;
-          </p>
-        )}
-
-        {response && review.status !== 'responded' && review.status !== 'ignored' && (
-          <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-            <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">
-              Réponse proposée par l&apos;IA
-            </p>
-            {isEditing ? (
-              <textarea
-                value={editedText}
-                onChange={(e) => setEditedText(e.target.value)}
-                rows={4}
-                className="w-full p-3 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              />
-            ) : (
-              <p className="text-sm text-gray-700">{editedText}</p>
-            )}
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                size="sm"
-                onClick={() => handleAction('approve')}
-                loading={loading === 'approve'}
-              >
-                <Check className="h-3.5 w-3.5" />
-                Publier
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsEditing(!isEditing)}
-              >
-                <Edit3 className="h-3.5 w-3.5" />
-                {isEditing ? 'Aperçu' : 'Modifier'}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleAction('regenerate')}
-                loading={loading === 'regenerate'}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Regénérer
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleAction('reject')}
-                loading={loading === 'reject'}
-              >
-                <X className="h-3.5 w-3.5" />
-                Ignorer
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {response && review.status === 'responded' && (
-          <div className="bg-green-50 rounded-lg p-4">
-            <p className="text-xs font-medium text-green-700 uppercase tracking-wide mb-2">
-              Réponse publiée
-            </p>
-            <p className="text-sm text-gray-700">
-              {response.final_text || response.ai_generated_text}
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

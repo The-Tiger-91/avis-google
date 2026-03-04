@@ -57,7 +57,7 @@ export default function ConnexionPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="vous@exemple.com"
               required
-              className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
             />
           </div>
         </div>
@@ -75,7 +75,7 @@ export default function ConnexionPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
             />
           </div>
         </div>
@@ -87,7 +87,7 @@ export default function ConnexionPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           Se connecter
@@ -96,7 +96,7 @@ export default function ConnexionPage() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Pas encore de compte ?{' '}
-        <Link href="/inscription" className="text-blue-600 hover:underline font-medium">
+        <Link href="/inscription" className="text-indigo-600 hover:underline font-medium">
           Créer un compte
         </Link>
       </p>

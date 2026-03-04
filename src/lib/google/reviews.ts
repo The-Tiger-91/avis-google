@@ -14,6 +14,7 @@ interface GoogleReview {
     comment: string
     updateTime: string
   }
+  photos?: { photoUri: string }[]
 }
 
 const STAR_RATING_MAP: Record<string, number> = {
@@ -58,14 +59,13 @@ export async function getAuthenticatedClient(
 
 export async function fetchReviews(
   accessToken: string,
-  locationName: string
+  locationName: string,
+  since?: Date
 ): Promise<GoogleReview[]> {
-  const url = `https://mybusiness.googleapis.com/v4/${locationName}/reviews`
+  const url = `https://mybusiness.googleapis.com/v4/${locationName}/reviews?pageSize=50`
 
   const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { Authorization: `Bearer ${accessToken}` },
   })
 
   if (!response.ok) {
@@ -74,7 +74,34 @@ export async function fetchReviews(
   }
 
   const data = await response.json()
-  return data.reviews || []
+  const reviews: GoogleReview[] = data.reviews || []
+
+  if (since) {
+    return reviews.filter(r => new Date(r.createTime) >= since)
+  }
+  return reviews
+}
+
+export async function fetchBusinessHours(
+  accessToken: string,
+  locationName: string
+): Promise<object | null> {
+  // locationName format: "accounts/xxx/locations/yyy" → extract "locations/yyy"
+  const parts = locationName.split('/')
+  const locationId = parts.slice(-2).join('/')
+  const url = `https://mybusinessbusinessinformation.googleapis.com/v1/${locationId}?readMask=regularHours`
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+
+  if (!response.ok) {
+    console.warn(`Could not fetch business hours: ${response.status}`)
+    return null
+  }
+
+  const data = await response.json()
+  return data.regularHours || null
 }
 
 export async function postReply(

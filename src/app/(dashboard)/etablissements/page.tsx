@@ -5,29 +5,44 @@ import { Store, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { ConnectGoogleButton } from '@/components/dashboard/connect-google-button'
 
+const MAX_BUSINESSES = 5
+
 export default async function EtablissementsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null // middleware gère le redirect
 
-  const { data: businesses } = await supabase
+  const businesses = (await supabase
     .from('businesses')
     .select('*')
-    .eq('user_id', user!.id)
-    .order('created_at', { ascending: false })
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })).data || []
+
+  const atLimit = businesses.length >= MAX_BUSINESSES
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mes établissements</h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-gray-500 mt-1 flex items-center gap-2">
             Gérez vos commerces connectés à Google Business
+            <span className={`text-xs font-semibold tabular-nums px-1.5 py-0.5 rounded-full ${
+              atLimit ? 'bg-amber-50 text-amber-500' : 'bg-gray-100 text-gray-400'
+            }`}>
+              {businesses.length} / {MAX_BUSINESSES}
+            </span>
           </p>
         </div>
-        <ConnectGoogleButton />
+        {!atLimit && <ConnectGoogleButton />}
+        {atLimit && (
+          <span className="text-xs text-amber-500 font-medium bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg">
+            Limite atteinte — passez en Premium+
+          </span>
+        )}
       </div>
 
-      {!businesses || businesses.length === 0 ? (
+      {businesses.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <Store className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -47,8 +62,8 @@ export default async function EtablissementsPage() {
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <Store className="h-5 w-5 text-blue-600" />
+                    <div className="p-3 bg-indigo-50 rounded-lg">
+                      <Store className="h-5 w-5 text-indigo-600" />
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">

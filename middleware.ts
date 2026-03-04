@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const protectedPaths = [
+  const dashboardPaths = [
     '/tableau-de-bord',
     '/avis',
     '/etablissements',
@@ -41,25 +41,48 @@ export async function middleware(request: NextRequest) {
     '/abonnement',
   ]
 
-  const isProtected = protectedPaths.some((path) =>
+  const isDashboard = dashboardPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   )
 
-  if (!user && isProtected) {
+  const isPaiement = request.nextUrl.pathname.startsWith('/paiement')
+
+  // Non connecté → redirect vers la landing page
+  // /demo/* est toujours accessible sans auth
+  if (!user && (isDashboard || isPaiement)) {
     const url = request.nextUrl.clone()
-    url.pathname = '/connexion'
+    url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
-  const authPaths = ['/connexion', '/inscription']
-  const isAuthPath = authPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  )
+  if (user) {
+    const hasPaid = user.user_metadata?.has_paid === true
 
-  if (user && isAuthPath) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/tableau-de-bord'
-    return NextResponse.redirect(url)
+    const authPaths = ['/connexion', '/inscription']
+    const isAuthPath = authPaths.some((path) =>
+      request.nextUrl.pathname.startsWith(path)
+    )
+
+    // Connecté + page auth → redirect selon paiement
+    if (isAuthPath) {
+      const url = request.nextUrl.clone()
+      url.pathname = hasPaid ? '/tableau-de-bord' : '/paiement'
+      return NextResponse.redirect(url)
+    }
+
+    // Connecté + pas payé + dashboard → redirect paiement
+    if (!hasPaid && isDashboard) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/paiement'
+      return NextResponse.redirect(url)
+    }
+
+    // Connecté + déjà payé + page paiement → redirect dashboard
+    if (hasPaid && isPaiement) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/tableau-de-bord'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

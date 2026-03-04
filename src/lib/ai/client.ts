@@ -13,6 +13,7 @@ interface GenerateResponseParams {
   reviewerName: string | null
   rating: number
   comment: string | null
+  photoUrls?: string[]
 }
 
 export async function generateReviewResponse(
@@ -20,6 +21,19 @@ export async function generateReviewResponse(
 ): Promise<string> {
   const systemPrompt = buildSystemPrompt(params)
   const userPrompt = buildUserPrompt(params)
+
+  const photos = params.photoUrls?.filter(Boolean) ?? []
+
+  const userContent: Anthropic.MessageParam['content'] = photos.length > 0
+    ? [
+        { type: 'text', text: userPrompt },
+        ...photos.slice(0, 4).map(url => ({
+          type: 'image' as const,
+          source: { type: 'url' as const, url },
+        })),
+        { type: 'text', text: 'Ces photos ont été jointes à cet avis par le client. Tiens-en compte pour personnaliser ta réponse si pertinent.' },
+      ]
+    : userPrompt
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
@@ -29,7 +43,7 @@ export async function generateReviewResponse(
     messages: [
       {
         role: 'user',
-        content: userPrompt,
+        content: userContent,
       },
     ],
   })
