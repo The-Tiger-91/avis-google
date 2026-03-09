@@ -1,0 +1,16 @@
+name: Poll Reviews
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call poll-reviews endpoint
+        run: |
+          curl -X GET https://avis-google-chi.vercel.app/api/cron/poll-reviews \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail
