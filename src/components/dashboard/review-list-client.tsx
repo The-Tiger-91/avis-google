@@ -14,6 +14,7 @@ interface Review {
   review_created_at: string | null
   status: string
   photo_urls?: string[]
+  is_dangerous?: boolean
   responses: Array<{
     id: string
     ai_generated_text: string
@@ -41,11 +42,13 @@ export function ReviewListClient({ initialReviews, businessName, showViewAll = t
     responded: reviews.filter(r => r.status === 'responded').length,
   }
 
-  const filtered = reviews.filter(r => {
-    if (filter === 'pending') return r.status === 'new' || r.status === 'response_pending'
-    if (filter === 'responded') return r.status === 'responded'
-    return true
-  })
+  const filtered = reviews
+    .filter(r => {
+      if (filter === 'pending') return r.status === 'new' || r.status === 'response_pending'
+      if (filter === 'responded') return r.status === 'responded'
+      return true
+    })
+    .sort((a, b) => (b.is_dangerous ? 1 : 0) - (a.is_dangerous ? 1 : 0))
 
   async function handleApprove(reviewId: string, responseId: string, text: string) {
     const res = await fetch(`/api/reviews/${reviewId}/respond`, {

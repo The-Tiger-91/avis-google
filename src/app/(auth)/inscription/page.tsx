@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Logo } from '@/components/logo'
 import {
-  Star,
   ArrowRight,
   ArrowLeft,
   Check,
@@ -27,6 +27,7 @@ import {
   Plus,
   X,
   ThumbsUp,
+  Star,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -146,31 +147,6 @@ const DEFAULT_EXAMPLE = {
   },
 }
 
-// Associe un type personnalisé au domaine d'exemple le plus proche
-function matchCustomTypeToDomain(text: string): string | null {
-  const t = text.toLowerCase()
-  const mappings: [string[], string][] = [
-    [['restaurant', 'café', 'bar', 'traiteur', 'pizzeria', 'brasserie', 'bistrot', 'snack', 'fast food', 'sushi', 'crêperie'], 'restauration'],
-    [['boulang', 'pâtiss', 'chocolat', 'confiser', 'glacier'], 'boulangerie'],
-    [['coiff', 'beauté', 'esthéti', 'ongler', 'manucur', 'barbier', 'barber', 'nail', 'maquill'], 'coiffure'],
-    [['garage', 'auto', 'mécanicien', 'carrosseri', 'pneu', 'contrôle technique', 'lavage'], 'garage'],
-    [['boutique', 'magasin', 'commerce', 'épiceri', 'supermarché', 'fleuriste', 'librairi', 'bijout', 'opticien', 'pharmacie'], 'commerce'],
-    [['médecin', 'docteur', 'dentist', 'kiné', 'ostéopath', 'psycholog', 'infirmi', 'sage-femme', 'véto', 'vétérinair', 'ophtalmo', 'dermato', 'cabinet médical', 'clinique', 'laboratoir', 'santé', 'bien-être', 'spa', 'massage', 'thérapeut'], 'sante'],
-    [['plombi', 'électrici', 'menuisi', 'peintre', 'maçon', 'charpent', 'serrurier', 'chauffagist', 'couvreur', 'jardinier', 'paysagist', 'artisan', 'rénovation', 'déménag'], 'artisan'],
-    [['hôtel', 'hotel', 'gîte', 'chambre d\'hôte', 'auberge', 'hébergement', 'camping', 'résidence', 'location vacance'], 'hotel'],
-    [['salle de sport', 'fitness', 'musculation', 'yoga', 'pilates', 'danse', 'boxe', 'arts martiaux', 'piscine', 'coach sportif', 'crossfit'], 'sport'],
-    [['formation', 'école', 'cours', 'auto-école', 'enseignement', 'tutorat', 'soutien scolaire', 'centre de formation', 'université', 'institut'], 'formation'],
-    [['avocat', 'notaire', 'huissier', 'cabinet', 'juridique', 'comptabl', 'expert-comptabl', 'conseil', 'consultant', 'assurance', 'banque', 'agence immobilièr', 'immobilier', 'architecte', 'agence'], 'commerce'],
-  ]
-
-  for (const [keywords, domain] of mappings) {
-    for (const keyword of keywords) {
-      if (t.includes(keyword)) return domain
-    }
-  }
-  return null
-}
-
 const BUSINESS_TYPES = [
   { id: 'restauration', label: 'Restauration', icon: ChefHat },
   { id: 'boulangerie', label: 'Boulangerie / Pâtisserie', icon: Store },
@@ -196,6 +172,7 @@ const TONE_COLORS: Record<string, { border: string; bg: string; radio: string; t
   green:  { border: 'border-green-600',  bg: 'bg-green-50',  radio: 'bg-green-600 border-green-600',   text: 'text-green-700' },
   amber:  { border: 'border-amber-600',  bg: 'bg-amber-50',  radio: 'bg-amber-600 border-amber-600',   text: 'text-amber-700' },
 }
+
 
 export default function InscriptionPage() {
   return (
@@ -225,6 +202,8 @@ function InscriptionForm() {
   const [error, setError] = useState('')
   const [errorField, setErrorField] = useState<'email' | 'password' | 'general' | ''>('')
   const [loading, setLoading] = useState(false)
+  const [customExample, setCustomExample] = useState<null | typeof DEFAULT_EXAMPLE>(null)
+  const [exampleLoading, setExampleLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -297,7 +276,7 @@ function InscriptionForm() {
       return { message: 'Trop de tentatives. Veuillez réessayer dans quelques minutes.', field: 'general' }
     if (m.includes('email'))
       return { message: 'Adresse email invalide.', field: 'email' }
-    return { message: 'Une erreur est survenue. Veuillez réessayer.', field: 'general' }
+    return { message: `Erreur : ${msg}`, field: 'general' }
   }
 
   async function handleSignup() {
@@ -306,10 +285,11 @@ function InscriptionForm() {
     setLoading(true)
 
     const supabase = createClient()
-    const { error: signupError } = await supabase.auth.signUp({
+    const { data, error: signupError } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/callback?next=/paiement`,
         data: {
           full_name: fullName,
           business_type: selectedType === 'autre' ? (correctedType || customType.trim()) : selectedType,
@@ -330,8 +310,14 @@ function InscriptionForm() {
       return
     }
 
-    router.push('/paiement')
-    router.refresh()
+    if (data.session) {
+      router.push('/paiement')
+      router.refresh()
+    } else {
+      setError('Compte créé. Veuillez vous connecter pour continuer.')
+      setErrorField('general')
+      setLoading(false)
+    }
   }
 
   function canGoNext() {
@@ -345,12 +331,12 @@ function InscriptionForm() {
     }
   }
 
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border p-8 max-w-lg w-full">
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
-        <Star className="h-6 w-6 text-purple-600" />
-        <span className="text-lg font-bold font-logo">Reply Genius</span>
+        <Logo size={26} textSize="text-lg" />
       </div>
 
       {/* Progress bar */}
@@ -507,9 +493,16 @@ function InscriptionForm() {
           </p>
 
           {/* Aperçu : exemple d'avis + réponse selon le ton et la plateforme */}
-          {(() => {
-            const customDomain = selectedType === 'autre' ? matchCustomTypeToDomain(correctedType || customType) : null
-            const example = REVIEW_EXAMPLES[customDomain || selectedType] || DEFAULT_EXAMPLE
+          {exampleLoading ? (
+            <div className="rounded-lg border border-gray-200 p-6 mb-5 flex items-center justify-center gap-2 text-sm text-gray-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Génération d&apos;un exemple personnalisé...
+            </div>
+          ) : null}
+          {!exampleLoading && (() => {
+            const example = selectedType === 'autre'
+              ? (customExample || DEFAULT_EXAMPLE)
+              : (REVIEW_EXAMPLES[selectedType] || DEFAULT_EXAMPLE)
 
             const yelpSquareColors: Record<number, string> = { 1: '#FFCC33', 2: '#FFAD1D', 3: '#FF8C00', 4: '#F26A2E', 5: '#FF1A1A' }
 
@@ -666,7 +659,7 @@ function InscriptionForm() {
                     <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wide mb-1.5">
                       Réponse Reply Genius — ton {TONES.find(t => t.id === selectedTone)?.label.toLowerCase()}
                     </p>
-                    <p className="text-xs text-gray-700 leading-relaxed">{example.responses[selectedTone]}</p>
+                    <p className="text-xs text-gray-700 leading-relaxed">{(example.responses as Record<string, string>)[selectedTone]}</p>
                   </div>
                 </div>
               </div>
@@ -779,7 +772,7 @@ function InscriptionForm() {
                 <p className="text-[10px] text-gray-400 mt-0.5">Facturé 300€/an</p>
               )}
               <ul className="mt-3 space-y-1.5 flex-1">
-                {['1 établissement', '50 réponses/mois', 'Choix du ton', 'Support email'].map((f) => (
+                {['1 établissement', '50 réponses/mois', 'Choix du ton', 'Mode validation manuelle', 'Statistiques & rapports', 'Historique 12 mois', 'Support email'].map((f) => (
                   <li key={f} className="flex items-center gap-1.5 text-[11px] text-gray-600">
                     <CheckCircle2 className="h-3 w-3 text-indigo-500 flex-shrink-0" />
                     {f}
@@ -816,7 +809,7 @@ function InscriptionForm() {
                 <p className="text-[10px] text-purple-400 mt-0.5">Facturé 504€/an</p>
               )}
               <ul className="mt-3 space-y-1.5 flex-1">
-                {['5 établissements', 'Réponses illimitées', 'Mode automatique', 'Instructions personnalisées', 'Support prioritaire'].map((f) => (
+                {['5 établissements', 'Réponses illimitées', 'Choix du ton', 'Mode validation manuelle', 'Mode automatique', 'Instructions personnalisées', 'Réponses multilingues', 'Statistiques & rapports', 'Historique illimité', 'Support prioritaire'].map((f) => (
                   <li key={f} className="flex items-center gap-1.5 text-[11px] text-gray-600">
                     <CheckCircle2 className="h-3 w-3 text-purple-500 flex-shrink-0" />
                     {f}
@@ -1141,7 +1134,29 @@ function InscriptionForm() {
         {step < totalSteps ? (
           <button
             type="button"
-            onClick={() => canGoNext() && setStep(step + 1)}
+            onClick={async () => {
+              if (!canGoNext()) return
+              // Génère un exemple personnalisé si type "autre" et transition vers step 3
+              // Pour tout type "autre", génère toujours un exemple via Claude
+              if (step === 2 && selectedType === 'autre') {
+                const typeText = correctedType || customType.trim()
+                setExampleLoading(true)
+                setCustomExample(null)
+                setStep(3)
+                try {
+                  const res = await fetch('/api/ai/generate-example', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ businessType: typeText }),
+                  })
+                  const data = await res.json()
+                  if (data.reviewer) setCustomExample(data)
+                } catch { /* fallback to DEFAULT_EXAMPLE */ }
+                finally { setExampleLoading(false) }
+                return
+              }
+              setStep(step + 1)
+            }}
             disabled={!canGoNext()}
             className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >

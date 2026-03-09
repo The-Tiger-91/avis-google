@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { RatingStars } from './rating-stars'
-import { Check, X, RefreshCw, Edit3, Clock } from 'lucide-react'
+import { Check, X, RefreshCw, Edit3, Clock, AlertTriangle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -16,6 +16,7 @@ interface ReviewCardProps {
     review_created_at: string | null
     status: string
     photo_urls?: string[]
+    is_dangerous?: boolean
   }
   response?: {
     id: string
@@ -81,8 +82,14 @@ export function ReviewCard({
   }
 
   return (
-    <Card className={isPending ? 'ring-2 ring-blue-100' : ''}>
+    <Card className={review.is_dangerous ? 'ring-2 ring-red-200' : isPending ? 'ring-2 ring-blue-100' : ''}>
       <CardContent className="p-5">
+        {review.is_dangerous && (
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5 mb-3">
+            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+            Avis sensible — vérifiez la réponse avant publication
+          </div>
+        )}
         <div className="flex items-start gap-3">
           {/* Avatar */}
           <div className={`w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>

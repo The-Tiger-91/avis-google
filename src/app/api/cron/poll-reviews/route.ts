@@ -7,6 +7,7 @@ import {
   postReply,
 } from '@/lib/google/reviews'
 import { generateReviewResponse } from '@/lib/ai/client'
+import { isDangerous } from '@/lib/utils'
 
 export async function GET(request: Request) {
   // Verify cron secret
@@ -74,6 +75,7 @@ export async function GET(request: Request) {
 
         // Insert new review
         const rating = parseStarRating(gReview.starRating)
+        const comment = gReview.comment || null
         const { data: newReview, error: reviewError } = await supabase
           .from('reviews')
           .insert({
@@ -82,9 +84,11 @@ export async function GET(request: Request) {
             reviewer_name: gReview.reviewer?.displayName || null,
             reviewer_photo_url: gReview.reviewer?.profilePhotoUrl || null,
             rating,
-            comment: gReview.comment || null,
+            comment,
             review_created_at: gReview.createTime,
             status: 'new',
+            photo_urls: gReview.photos?.map(p => p.photoUri) || [],
+            is_dangerous: isDangerous(comment),
           })
           .select()
           .single()

@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Mail, Lock, Loader2 } from 'lucide-react'
+import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 export default function ConnexionPage() {
   const [email, setEmail] = useState('')
@@ -25,7 +26,14 @@ export default function ConnexionPage() {
     })
 
     if (error) {
-      setError('Email ou mot de passe incorrect')
+      const msg = error.message.toLowerCase()
+      if (msg.includes('email not confirmed')) {
+        setError('Veuillez confirmer votre email avant de vous connecter. Vérifiez vos spams.')
+      } else if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
+        setError('Email ou mot de passe incorrect.')
+      } else {
+        setError('Une erreur est survenue. Veuillez réessayer.')
+      }
       setLoading(false)
       return
     }
@@ -35,10 +43,10 @@ export default function ConnexionPage() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border p-8">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Connexion</h1>
-        <p className="text-gray-500 mt-2">
+    <div className="bg-white rounded-2xl shadow-sm border p-8 max-w-md w-full">
+      <div className="flex flex-col items-center mb-8">
+        <Logo size={28} textSize="text-xl" />
+        <p className="text-gray-500 mt-3 text-sm">
           Accédez à votre tableau de bord
         </p>
       </div>
@@ -57,15 +65,17 @@ export default function ConnexionPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="vous@exemple.com"
               required
-              className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Mot de passe
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Mot de passe
+            </label>
+          </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
@@ -75,19 +85,22 @@ export default function ConnexionPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
             />
           </div>
         </div>
 
         {error && (
-          <p className="text-red-500 text-sm">{error}</p>
+          <div className="flex items-start gap-2 bg-red-50 border border-red-100 text-red-600 text-sm px-3 py-2.5 rounded-lg">
+            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
         )}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           Se connecter

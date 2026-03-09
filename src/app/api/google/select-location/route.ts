@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchBusinessHours, fetchReviews, parseStarRating } from '@/lib/google/reviews'
 import { generateReviewResponse } from '@/lib/ai/client'
+import { isDangerous } from '@/lib/utils'
 import { NextResponse } from 'next/server'
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
             google_refresh_token: pending.refresh_token,
             google_token_expires_at: pending.token_expires_at,
             business_hours: hours,
+            google_connected_at: new Date().toISOString(),
           },
           { onConflict: 'google_location_name', ignoreDuplicates: false }
         )
@@ -99,6 +101,7 @@ async function runInitialSync(accessToken: string, business: any, locationName: 
         status = 'new'
       }
 
+      const comment = gReview.comment || null
       const { data: newReview, error: reviewError } = await supabase
         .from('reviews')
         .insert({
@@ -107,9 +110,11 @@ async function runInitialSync(accessToken: string, business: any, locationName: 
           reviewer_name: gReview.reviewer?.displayName || null,
           reviewer_photo_url: gReview.reviewer?.profilePhotoUrl || null,
           rating,
-          comment: gReview.comment || null,
+          comment,
           review_created_at: gReview.createTime,
           status,
+          photo_urls: gReview.photos?.map((p: { photoUri: string }) => p.photoUri) || [],
+          is_dangerous: isDangerous(comment),
         })
         .select()
         .single()

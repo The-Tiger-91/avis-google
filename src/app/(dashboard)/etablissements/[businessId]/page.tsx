@@ -7,6 +7,7 @@ import { MapPin, ArrowLeft, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { DeleteBusinessButton } from './delete-button'
+import { BackfillButton } from './backfill-button'
 
 export default async function BusinessDetailPage({
   params,
@@ -139,15 +140,20 @@ export default async function BusinessDetailPage({
             </div>
           )}
 
-          <div className="flex items-center gap-3 pt-3 border-t">
+          <div className="flex items-center gap-3 pt-3 border-t flex-wrap">
             <Link href="/parametres">
               <Button variant="outline" size="sm">
                 <Settings className="h-4 w-4" />
                 Modifier les paramètres
               </Button>
             </Link>
+            <BackfillButton
+              businessId={business.id}
+              googleConnectedAt={business.google_connected_at || null}
+            />
             <DeleteBusinessButton businessId={business.id} businessName={business.business_name} />
           </div>
+
         </CardContent>
       </Card>
 

@@ -9,8 +9,8 @@ import {
   Store,
   Settings,
   CreditCard,
-  Star,
 } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 const navigation = [
   { name: 'Tableau de bord', href: '/tableau-de-bord', icon: LayoutDashboard },
@@ -26,8 +26,7 @@ export function Sidebar({ basePath = '' }: { basePath?: string }) {
   return (
     <aside className="w-56 bg-white border-r border-gray-100 h-screen flex-shrink-0 p-3 flex flex-col">
       <Link href={basePath ? `${basePath}/tableau-de-bord` : '/'} className="flex items-center gap-2 px-3 py-3.5 mb-4">
-        <Star className="h-5 w-5 text-indigo-600 fill-indigo-600" />
-        <span className="text-sm font-semibold text-gray-900 tracking-tight font-logo">Reply Genius</span>
+        <Logo size={28} textSize="text-xl" />
       </Link>
 
       <nav className="flex-1 space-y-0.5">

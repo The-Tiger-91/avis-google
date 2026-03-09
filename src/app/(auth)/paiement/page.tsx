@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
-  Star,
   CreditCard,
   Shield,
   Lock,
@@ -12,6 +11,7 @@ import {
   Check,
   CheckCircle2,
 } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 function detectCardBrand(number: string): 'visa' | 'mastercard' | null {
   const clean = number.replace(/\s/g, '')
@@ -41,6 +41,7 @@ export default function PaiementPage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [plan, setPlan] = useState<string>('pro')
   const [billing, setBilling] = useState<string>('yearly')
+  const [userEmail, setUserEmail] = useState<string>('')
   const router = useRouter()
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function PaiementPage() {
       }
       setPlan(user.user_metadata?.plan || 'pro')
       setBilling(user.user_metadata?.billing || 'yearly')
+      setUserEmail(user.email || '')
       setPageLoading(false)
     })
   }, [router])
@@ -93,6 +95,15 @@ export default function PaiementPage() {
       data: { has_paid: true },
     })
 
+    // Envoyer l'email de vérification après paiement
+    if (userEmail) {
+      await supabase.auth.resend({
+        type: 'signup',
+        email: userEmail,
+        options: { emailRedirectTo: `${window.location.origin}/callback?next=/tableau-de-bord` },
+      })
+    }
+
     setSuccess(true)
 
     // Redirect après animation
@@ -115,7 +126,12 @@ export default function PaiementPage() {
           <Check className="h-8 w-8 text-green-600" />
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Paiement confirmé !</h2>
-        <p className="text-sm text-gray-500">Redirection vers votre tableau de bord...</p>
+        <p className="text-sm text-gray-500 mb-4">Redirection vers votre tableau de bord...</p>
+        {userEmail && (
+          <p className="text-xs text-gray-400 text-center max-w-xs">
+            Un email de vérification a été envoyé à <span className="font-medium text-gray-600">{userEmail}</span>. Pensez à confirmer votre adresse.
+          </p>
+        )}
         <Loader2 className="h-5 w-5 text-gray-400 animate-spin mt-4" />
       </div>
     )
@@ -125,8 +141,7 @@ export default function PaiementPage() {
     <div className="bg-white rounded-2xl shadow-sm border p-8 max-w-lg w-full">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
-        <Star className="h-6 w-6 text-purple-600" />
-        <span className="text-lg font-bold font-logo">Reply Genius</span>
+        <Logo size={26} textSize="text-lg" />
       </div>
 
       {/* Récapitulatif du plan */}

@@ -9,7 +9,7 @@ const PLANS = [
     name: 'Pro',
     monthlyPrice: 29,
     yearlyPrice: 25,
-    features: ['1 établissement', '50 réponses/mois', 'Choix du ton', 'Support email'],
+    features: ['1 établissement', '50 réponses/mois', 'Choix du ton', 'Mode validation manuelle', 'Statistiques & rapports', 'Historique 12 mois', 'Support email'],
     highlighted: false,
     plan: 'pro',
   },
@@ -17,7 +17,7 @@ const PLANS = [
     name: 'Premium',
     monthlyPrice: 49,
     yearlyPrice: 42,
-    features: ['5 établissements', 'Réponses illimitées', 'Mode automatique', 'Instructions personnalisées', 'Support prioritaire'],
+    features: ['5 établissements', 'Réponses illimitées', 'Choix du ton', 'Mode validation manuelle', 'Mode automatique', 'Instructions personnalisées', 'Réponses multilingues', 'Statistiques & rapports', 'Historique illimité', 'Support prioritaire'],
     highlighted: true,
     plan: 'premium',
   },
@@ -110,7 +110,7 @@ export function PricingToggle() {
                       plan.highlighted ? 'text-purple-100' : 'text-gray-600'
                     }`}
                   >
-                    <CheckCircle2 className={`h-4 w-4 flex-shrink-0 ${plan.highlighted ? 'text-purple-200' : 'text-blue-600'}`} />
+                    <CheckCircle2 className={`h-4 w-4 flex-shrink-0 ${plan.highlighted ? 'text-purple-200' : 'text-indigo-600'}`} />
                     {f}
                   </li>
                 ))}
@@ -120,7 +120,7 @@ export function PricingToggle() {
                 className={`block text-center py-2.5 rounded-lg font-medium text-sm ${
                   plan.highlighted
                     ? 'bg-white text-purple-600 hover:bg-purple-50'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
                 }`}
               >
                 Commencer
