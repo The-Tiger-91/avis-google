@@ -204,6 +204,10 @@ export default async function TableauDeBordPage({
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-gray-900">Avis récents</h2>
             <GoogleBadge />
+            <span className="flex items-center gap-1.5 text-xs text-gray-400">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              Synchro toutes les 15 min
+            </span>
           </div>
           <ReviewListClient initialReviews={recentReviews || []} businessName={selectedBusiness.business_name} />
         </div>
