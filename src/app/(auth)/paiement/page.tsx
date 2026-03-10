@@ -94,15 +94,7 @@ export default function PaiementPage() {
     await supabase.auth.updateUser({
       data: { has_paid: true },
     })
-
-    // Envoyer l'email de vérification après paiement
-    if (userEmail) {
-      await supabase.auth.resend({
-        type: 'signup',
-        email: userEmail,
-        options: { emailRedirectTo: `${window.location.origin}/callback?next=/tableau-de-bord` },
-      })
-    }
+    await supabase.auth.refreshSession()
 
     setSuccess(true)
 
@@ -129,7 +121,7 @@ export default function PaiementPage() {
         <p className="text-sm text-gray-500 mb-4">Redirection vers votre tableau de bord...</p>
         {userEmail && (
           <p className="text-xs text-gray-400 text-center max-w-xs">
-            Un email de vérification a été envoyé à <span className="font-medium text-gray-600">{userEmail}</span>. Pensez à confirmer votre adresse.
+            Bienvenue ! Votre compte <span className="font-medium text-gray-600">{userEmail}</span> est maintenant actif.
           </p>
         )}
         <Loader2 className="h-5 w-5 text-gray-400 animate-spin mt-4" />
