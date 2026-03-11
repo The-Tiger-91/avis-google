@@ -95,7 +95,7 @@ export function LocationPickerModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Fond sombre */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
 
       {/* Carte modale */}
       <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
