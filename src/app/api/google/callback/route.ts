@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { getGoogleTokens } from '@/lib/google/auth'
-import { fetchAccounts, fetchLocations } from '@/lib/google/reviews'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -26,32 +25,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/etablissements?error=no_token`)
     }
 
-    // Fetch all available Google Business locations
-    const locations: Array<{
-      account_name: string
-      location_name: string
-      title: string
-      address: string | null
-    }> = []
-
-    const accounts = await fetchAccounts(tokens.access_token)
-    for (const account of accounts) {
-      const locs = await fetchLocations(tokens.access_token, account.name)
-      for (const loc of locs) {
-        locations.push({
-          account_name: account.name,
-          location_name: loc.name,
-          title: loc.title || 'Mon commerce',
-          address: loc.storefrontAddress?.addressLines?.join(', ') || null,
-        })
-      }
-    }
-
-    if (locations.length === 0) {
-      return NextResponse.redirect(`${origin}/etablissements?error=no_locations`)
-    }
-
-    // Store tokens + locations temporarily, redirect to picker
+    // Sauvegarde les tokens immédiatement (les établissements seront chargés depuis le modal)
     const { data: pending } = await supabase
       .from('pending_google_connections')
       .insert({
@@ -61,7 +35,7 @@ export async function GET(request: Request) {
         token_expires_at: tokens.expiry_date
           ? new Date(tokens.expiry_date).toISOString()
           : null,
-        locations,
+        locations: [],
       })
       .select('id')
       .single()

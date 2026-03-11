@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, MapPin, Store, Check } from 'lucide-react'
+import { X, MapPin, Store, Check, Loader2, RefreshCw } from 'lucide-react'
 
 interface Location {
   account_name: string
@@ -13,15 +13,46 @@ interface Location {
 
 export function LocationPickerModal({
   sessionId,
-  locations,
+  locations: initialLocations,
 }: {
   sessionId: string
   locations: Location[]
 }) {
+  const [locations, setLocations] = useState<Location[]>(initialLocations)
+  const [loadingLocations, setLoadingLocations] = useState(initialLocations.length === 0)
+  const [fetchError, setFetchError] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  useEffect(() => {
+    if (initialLocations.length === 0) {
+      loadLocations()
+    }
+  }, [])
+
+  async function loadLocations() {
+    setLoadingLocations(true)
+    setFetchError('')
+    try {
+      const res = await fetch('/api/google/fetch-locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      })
+      const data = await res.json()
+      if (res.ok && data.locations) {
+        setLocations(data.locations)
+      } else {
+        setFetchError(data.error || 'Impossible de charger les établissements.')
+      }
+    } catch {
+      setFetchError('Erreur réseau. Vérifiez votre connexion.')
+    } finally {
+      setLoadingLocations(false)
+    }
+  }
 
   function toggle(locationName: string) {
     setSelected(prev =>
@@ -84,9 +115,11 @@ export function LocationPickerModal({
                 Choisissez votre établissement
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                {locations.length === 1
-                  ? '1 établissement trouvé dans votre compte Google'
-                  : `${locations.length} établissements trouvés dans votre compte Google`}
+                {loadingLocations
+                  ? 'Récupération de vos établissements…'
+                  : locations.length === 1
+                    ? '1 établissement trouvé dans votre compte Google'
+                    : `${locations.length} établissements trouvés dans votre compte Google`}
               </p>
             </div>
           </div>
@@ -98,40 +131,58 @@ export function LocationPickerModal({
           </button>
         </div>
 
-        {/* Liste des établissements */}
+        {/* Corps */}
         <div className="p-6 space-y-2.5 max-h-72 overflow-y-auto">
-          {locations.map((loc) => {
-            const isSelected = selected.includes(loc.location_name)
-            return (
+          {loadingLocations ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <Loader2 className="h-7 w-7 text-indigo-500 animate-spin" />
+              <p className="text-sm text-gray-500">Connexion à Google Business…</p>
+            </div>
+          ) : fetchError ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+              <p className="text-sm text-red-500">{fetchError}</p>
               <button
-                key={loc.location_name}
-                onClick={() => toggle(loc.location_name)}
-                className={`w-full text-left flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all ${
-                  isSelected
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white'
-                }`}
+                onClick={loadLocations}
+                className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                  isSelected ? 'bg-indigo-100' : 'bg-white border border-gray-200'
-                }`}>
-                  {isSelected
-                    ? <Check className="h-4 w-4 text-indigo-600" />
-                    : <Store className="h-4 w-4 text-gray-400" />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm truncate">{loc.title}</p>
-                  {loc.address && (
-                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5 truncate">
-                      <MapPin className="h-3 w-3 flex-shrink-0" />
-                      {loc.address}
-                    </p>
-                  )}
-                </div>
+                <RefreshCw className="h-4 w-4" />
+                Réessayer
               </button>
-            )
-          })}
+            </div>
+          ) : (
+            locations.map((loc) => {
+              const isSelected = selected.includes(loc.location_name)
+              return (
+                <button
+                  key={loc.location_name}
+                  onClick={() => toggle(loc.location_name)}
+                  className={`w-full text-left flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all ${
+                    isSelected
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                    isSelected ? 'bg-indigo-100' : 'bg-white border border-gray-200'
+                  }`}>
+                    {isSelected
+                      ? <Check className="h-4 w-4 text-indigo-600" />
+                      : <Store className="h-4 w-4 text-gray-400" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm truncate">{loc.title}</p>
+                    {loc.address && (
+                      <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5 truncate">
+                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                        {loc.address}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              )
+            })
+          )}
         </div>
 
         {/* Footer */}
@@ -141,7 +192,7 @@ export function LocationPickerModal({
           )}
           <button
             onClick={handleConfirm}
-            disabled={selected.length === 0 || loading}
+            disabled={selected.length === 0 || loading || loadingLocations}
             className="w-full py-3 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading
