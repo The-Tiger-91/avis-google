@@ -72,7 +72,8 @@ export async function GET(request: Request) {
 
     return NextResponse.redirect(`${origin}/tableau-de-bord?session=${pending.id}`)
   } catch (error) {
-    console.error('Google OAuth callback error:', error)
-    return NextResponse.redirect(`${origin}/etablissements?error=oauth_failed`)
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('Google OAuth callback error:', message)
+    return NextResponse.redirect(`${origin}/etablissements?error=oauth_failed&detail=${encodeURIComponent(message)}`)
   }
 }
